@@ -5,6 +5,7 @@ import cv2
 import sklearn
 from sklearn.model_selection import train_test_split
 import matplotlib.pyplot as plt
+import matplotlib.image as mpimg
 
 class DataFeeder():
     """
@@ -85,7 +86,7 @@ class DataFeeder():
             plt.hist(df.loc[idx, "steering"])
             plt.show()
             
-    def add_side_cameras(self, correction = 0.20):
+    def add_side_cameras(self, correction = 0.25):
         """
         Extends the datasets with images from the side cameras
         """
@@ -197,7 +198,7 @@ def get_data(batch_sample):
     """
     Helper function to flip the image
     """
-    center_image = cv2.imread("data/" + batch_sample["center"])
+    center_image = mpimg.imread("data/" + batch_sample["center"])
     center_angle = float(batch_sample["steering"])
                     
     if batch_sample["flip"] > 0:

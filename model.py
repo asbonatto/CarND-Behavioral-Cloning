@@ -9,7 +9,7 @@ from data_feeder import DataFeeder
 import matplotlib.pyplot as plt
 
 from keras.models import Sequential
-from keras.callbacks import ModelCheckpoint
+from keras.callbacks import ModelCheckpoint, EarlyStopping
 from keras.layers import Cropping2D, Lambda, BatchNormalization, Input
 from keras.layers.core import Dense, Activation, Flatten, Dropout
 from keras.layers.convolutional import Conv2D, MaxPooling2D
@@ -44,13 +44,14 @@ def nvidia_model():
         model = enhanced_conv2d(model, filter, 5, strides=(2, 2))
         
     for filter in [64, 64]:
-        model = enhanced_conv2d(model, 64, 3)
+        model = enhanced_conv2d(model, filter, 3)
     
     # The original model does not contain dropout layer
     model.add(Flatten())
+    
+    model.add(Dropout(0.5))
     for neurons in [100, 50, 10]:
         model.add(Dense(neurons, activation = 'linear'))
-        model.add(Dropout(0.5))
         model.add(LeakyReLU(alpha = 0.01))
         
  
@@ -68,12 +69,13 @@ def train_network(model, epochs = 5):
     
     data = DataFeeder()
     
-    checkpoint = [ModelCheckpoint('model{epoch:02d}.h5')]
+    callbacks = [ModelCheckpoint('model{epoch:02d}.h5')]
+    #callbacks.append(EarlyStopping(monitor='val_loss', min_delta=1e-6, verbose=1))
 
     model.compile(optimizer = "adam", loss = "mse")
     history = model.fit_generator(data.fetch_train(), nb_epoch = epochs, steps_per_epoch = data.steps_per_epoch, \
                                   validation_data = data.fetch_valid(), validation_steps = data.validation_steps, \
-                                  verbose = 1, callbacks = checkpoint)
+                                  verbose = 1, callbacks = callbacks)
     
     model.save(modelname + ".h5")
     print("Model saved to {}.h5".format(modelname))
