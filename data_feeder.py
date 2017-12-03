@@ -13,12 +13,13 @@ class DataFeeder():
     feed them to the network model
     """
     
-    def __init__(self, data_dir = "data", batch_size = 256, test_size = 0.20):
+    def __init__(self, data_dir = "data", batch_size = 512, test_size = 0.20):
         
         self.logfile = os.path.join(data_dir, "driving_log.csv")
         self.batch_size = batch_size
         self.db_index = self._read_index()
         self.db_index = self._list_campaigns()
+        # self.rebalance()
         self.add_side_cameras()
         self.add_flipped()
         
@@ -110,13 +111,14 @@ class DataFeeder():
         
         
     
-    def rebalance(self, nbins = 100):
+    def rebalance(self, nbins = 40):
         """
         Create bins of approximately the same size for sampling uniformly rebalancing the 
         dataset
         """
         
-        df = self.db_index_raw
+        
+        df = self.db_index
         rebalanced = []
         for campaign in df["campaign"].unique():
             # First create the bins
@@ -128,7 +130,7 @@ class DataFeeder():
             #central_bins = [bin for bin in bins if bin.left*bin.right <= 0]
             
             groups = df.loc[idx].groupby(["bins"])
-            max_samples = int(np.percentile(groups.size(), 50))
+            max_samples = int(np.percentile(groups.size(), 80))
             
             resample = groups.filter(lambda x: len(x) >= max_samples)
             rebalanced.append(resample.apply(lambda x: x.sample(n= max_samples).reset_index(drop = True)))
@@ -139,8 +141,8 @@ class DataFeeder():
             
         self.db_index_raw = df    
         self.db_index = pd.concat(rebalanced, ignore_index = True)
-        
-        
+        print("Number of samples discarded {}".format(len(self.db_index_raw) - len(self.db_index)))
+   
         
     def fetch_train(self):
         """
@@ -206,3 +208,15 @@ def get_data(batch_sample):
         center_angle = center_angle*-1.0
     
     return center_image, center_angle
+
+def adjust_brightness(img):
+    """
+    Performs histogram equalization on brightness channel (HSV)
+    """
+    
+    img2 = cv2.cvtColor(img, cv2.COLOR_RGB2HSV)
+    
+    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
+    img2[:,:, 2] = clahe.apply(img2[:,:, 2])
+    
+    return cv2.cvtColor(img2, cv2.COLOR_HSV2RGB)
